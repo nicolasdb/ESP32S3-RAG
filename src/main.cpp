@@ -1,67 +1,122 @@
 #include <Arduino.h>
 #include <SPIFFS.h>
 
-void testSPIFFS() {
-    Serial.println("\n--- SPIFFS Test ---");
+const char* CONFIG_FILE = "/config.json";
+const char* LOG_FILE = "/sensor_log.txt";
 
+void initSPIFFS() {
     if (!SPIFFS.begin(true)) {
         Serial.println("An error has occurred while mounting SPIFFS");
         return;
     }
-    
     Serial.println("SPIFFS mounted successfully");
+}
 
-    // Write a test file
-    File file = SPIFFS.open("/test.txt", FILE_WRITE);
+void saveConfig(const char* ssid, const char* password) {
+    File file = SPIFFS.open(CONFIG_FILE, FILE_WRITE);
     if (!file) {
-        Serial.println("Failed to open file for writing");
+        Serial.println("Failed to open config file for writing");
         return;
     }
-    if (file.print("Hello, SPIFFS!")) {
-        Serial.println("File written");
+    
+    String config = "{\"ssid\":\"" + String(ssid) + "\",\"password\":\"" + String(password) + "\"}";
+    if (file.print(config)) {
+        Serial.println("Config saved");
     } else {
-        Serial.println("Write failed");
+        Serial.println("Config save failed");
     }
     file.close();
+}
 
-    // Read the test file
-    file = SPIFFS.open("/test.txt", FILE_READ);
+bool loadConfig(String &ssid, String &password) {
+    File file = SPIFFS.open(CONFIG_FILE, FILE_READ);
     if (!file) {
-        Serial.println("Failed to open file for reading");
+        Serial.println("No config file found");
+        return false;
+    }
+    
+    String config = file.readString();
+    file.close();
+    
+    int ssidStart = config.indexOf("\"ssid\":\"") + 8;
+    int ssidEnd = config.indexOf("\"", ssidStart);
+    int passStart = config.indexOf("\"password\":\"") + 12;
+    int passEnd = config.indexOf("\"", passStart);
+    
+    if (ssidStart == -1 || ssidEnd == -1 || passStart == -1 || passEnd == -1) {
+        Serial.println("Config file format error");
+        return false;
+    }
+    
+    ssid = config.substring(ssidStart, ssidEnd);
+    password = config.substring(passStart, passEnd);
+    
+    Serial.println("Config loaded");
+    return true;
+}
+
+void logSensorData(float temperature, float humidity) {
+    File file = SPIFFS.open(LOG_FILE, FILE_APPEND);
+    if (!file) {
+        Serial.println("Failed to open log file for appending");
         return;
     }
-    Serial.println("File Content:");
+    
+    String logEntry = String(millis()) + ",temp:" + String(temperature) + ",hum:" + String(humidity) + "\n";
+    if (file.print(logEntry)) {
+        Serial.println("Sensor data logged");
+    } else {
+        Serial.println("Sensor data logging failed");
+    }
+    file.close();
+}
+
+void printLogFile() {
+    File file = SPIFFS.open(LOG_FILE, FILE_READ);
+    if (!file) {
+        Serial.println("No log file found");
+        return;
+    }
+    
+    Serial.println("Log file contents:");
     while (file.available()) {
         Serial.write(file.read());
     }
-    Serial.println();
     file.close();
-
-    // List files
-    Serial.println("Files in SPIFFS:");
-    File root = SPIFFS.open("/");
-    File foundFile = root.openNextFile();
-    while (foundFile) {
-        Serial.print("  ");
-        Serial.println(foundFile.name());
-        foundFile = root.openNextFile();
-    }
-
-    Serial.println("--- SPIFFS Test Complete ---\n");
 }
 
 void setup() {
     Serial.begin(115200);
     delay(1000);  // Give some time for the serial connection to establish
     
-    Serial.println("\n\n--- ESP32-C3 Boot Complete ---");
+    Serial.println("\n\n--- ESP32 Boot Complete ---");
     Serial.println("If you can see this message, serial communication is working.");
-    Serial.println("Press the reset button on the board to test auto-reconnection.");
     
-    testSPIFFS();
+    initSPIFFS();
+    
+    // Example usage of new functions
+    saveConfig("MyWiFi", "MyPassword");
+    
+    String ssid, password;
+    if (loadConfig(ssid, password)) {
+        Serial.println("Loaded SSID: " + ssid);
+        Serial.println("Loaded Password: " + password);
+    }
+    
+    // Simulate sensor readings
+    logSensorData(23.5, 60.0);
+    logSensorData(24.0, 59.5);
+    
+    printLogFile();
 }
 
 void loop() {
-    delay(5000);  // Wait 5 seconds before repeating the test
-    testSPIFFS();
+    delay(10000);  // Wait 10 seconds
+    
+    // Simulate a sensor reading every 10 seconds
+    float temp = random(200, 300) / 10.0;  // Random temperature between 20.0 and 30.0
+    float hum = random(500, 700) / 10.0;   // Random humidity between 50.0 and 70.0
+    
+    logSensorData(temp, hum);
+    Serial.printf("Logged: Temperature %.1f°C, Humidity %.1f%%\n", temp, hum);
 }

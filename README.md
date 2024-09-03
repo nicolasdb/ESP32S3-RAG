@@ -7,9 +7,9 @@ This project aims to test and validate the capability to use SPIFFS internal sto
 ### Objective 1: Test and validate SPIFFS internal storage on ESP32-S3 and C3
 
 Key Results:
--[ ] Successfully initialize SPIFFS on both ESP32-S3 and C3 🚧
--[ ] Implement basic file operations (read, write, delete) using SPIFFS 
--[ ] Measure and document storage capacity and performance metrics 
+-[x] Successfully initialize SPIFFS on both ESP32-S3 and C3 ✅
+-[x] Implement basic file operations (read, write, delete) using SPIFFS ✅
+-[ ] Measure and document storage capacity and performance metrics 🚧
 
 ### Objective 2: Enhance User Identification
 
